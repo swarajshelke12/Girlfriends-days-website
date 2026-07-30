@@ -5,6 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>To Happiiii.. — With All My Love 💗</title>
   <meta name="description" content="A world built for Happiii — crafted with every beat of Swaraj's heart." />
+  <meta name="theme-color" content="#060108" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <!-- Open Graph / WhatsApp / Social Media Share -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="To Happiii.. — With All My Love 💗" />
+  <meta property="og:description" content="A world built for Happiii — crafted with every beat of Swaraj's heart." />
+  <meta property="og:site_name" content="For Happiii" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="To Happiii.. — With All My Love 💗" />
+  <meta name="twitter:description" content="A world built for Happiii — crafted with every beat of Swaraj's heart." />
+
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💗</text></svg>" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -1317,11 +1332,9 @@ footer strong{color:var(--txta);}
   pointer-events: none;
   z-index: -1;
   opacity: 1;
-  filter: none;
+  will-change: transform;
+  transform: translateZ(0);
   transition: opacity 0.6s ease;
-}
-#bg-video {
-  display: none;
 }
 
 /* Traveling Rose on Scroll */
@@ -1340,7 +1353,6 @@ footer strong{color:var(--txta);}
 /* Reduced motion */
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;}
-  #bg-video { display: none; }
   .scroll-rose { display: none; }
 }
   </style>
@@ -1349,11 +1361,6 @@ footer strong{color:var(--txta);}
 
 <!-- Background Frame Sequence Canvas (Scrubbed on Scroll) -->
 <canvas id="bg-frame-canvas" aria-hidden="true"></canvas>
-
-<!-- Background Video (Option 2: Celestial Midnight Stardust) -->
-<video id="bg-video" autoplay loop muted playsinline aria-hidden="true">
-  <source src="Background animation.mp4" type="video/mp4">
-</video>
 
 <!-- ── Traveling Rose on Scroll ────────────────── -->
 <div id="scroll-rose" class="scroll-rose" aria-hidden="true">🌹</div>
@@ -1597,27 +1604,31 @@ window.addEventListener("scroll", () => {
 updateRosePosition();
 
 /* ═══════════════════════════════════════════════════════════
-   FRAME SEQUENCE SCROLL SCRUBBER (267 FRAMES VIDEO BACKGROUND)
+   HIGH-PERFORMANCE FRAME CANVAS ENGINE (WEBP + ASYNC BATCHING + LERP)
 ═══════════════════════════════════════════════════════════ */
 const frameCanvas = document.getElementById("bg-frame-canvas");
-const frameCtx = frameCanvas ? frameCanvas.getContext("2d") : null;
-const frameImages = [];
-let totalFrames = 267;
-let loadedFrames = 0;
-let isRenderingFrame = false;
+const frameCtx = frameCanvas ? frameCanvas.getContext("2d", { alpha: false }) : null;
+const frameImages = new Map(); // Index -> HTMLImageElement
+const TOTAL_FRAMES = 267;
+const START_FRAME_INDEX = 1;
+
+let currentFrameFloat = 0;
+let targetFrameFloat = 0;
+let isAnimatingCanvas = false;
+let lastDrawnIndex = -1;
 
 function resizeFrameCanvas() {
   if (!frameCanvas) return;
-  frameCanvas.width = window.innerWidth;
-  frameCanvas.height = window.innerHeight;
-  renderScrollFrame();
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  frameCanvas.width = Math.floor(window.innerWidth * dpr);
+  frameCanvas.height = Math.floor(window.innerHeight * dpr);
+  renderCanvasImmediate();
 }
-window.addEventListener("resize", resizeFrameCanvas, { passive: true });
 
-function drawCoverOnCanvas(ctx, targetCanvas, img) {
-  if (!ctx || !targetCanvas || !img || !img.complete || img.naturalWidth === 0) return;
-  const cw = targetCanvas.width;
-  const ch = targetCanvas.height;
+function drawCoverOnCanvas(ctx, canvas, img) {
+  if (!ctx || !canvas || !img || !img.complete || img.naturalWidth === 0) return;
+  const cw = canvas.width;
+  const ch = canvas.height;
   const iw = img.naturalWidth;
   const ih = img.naturalHeight;
   const scale = Math.max(cw / iw, ch / ih);
@@ -1625,50 +1636,139 @@ function drawCoverOnCanvas(ctx, targetCanvas, img) {
   const nh = ih * scale;
   const cx = (cw - nw) / 2;
   const cy = (ch - nh) / 2;
-  ctx.clearRect(0, 0, cw, ch);
   ctx.drawImage(img, cx, cy, nw, nh);
 }
 
-function renderScrollFrame() {
-  if (isRenderingFrame) return;
-  isRenderingFrame = true;
-  requestAnimationFrame(() => {
-    isRenderingFrame = false;
-    if (!frameCtx || totalFrames === 0) return;
-    const maxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
-    const scrollPercent = Math.min(1, Math.max(0, window.scrollY / maxScroll));
-    // Calculate frame index based on scroll position (0% to 100%)
-    const frameIdx = Math.min(totalFrames - 1, Math.floor(scrollPercent * totalFrames));
-    const img = frameImages[frameIdx];
-    if (img && img.complete && img.naturalWidth > 0) {
-      drawCoverOnCanvas(frameCtx, frameCanvas, img);
-    }
-  });
-}
-window.addEventListener("scroll", renderScrollFrame, { passive: true });
-
-// Load frame sequence from Frames/ directory starting at ezgif-frame-004.jpg through ezgif-frame-267.jpg
-function loadFrameSequence(startFrame = 4, endFrame = 267) {
-  totalFrames = endFrame - startFrame + 1;
-  frameImages.length = 0;
-  loadedFrames = 0;
-  for (let i = startFrame; i <= endFrame; i++) {
-    const img = new Image();
-    const frameNum = String(i).padStart(3, '0');
-    img.src = `Frames/ezgif-frame-${frameNum}.jpg`;
-    img.onload = () => {
-      loadedFrames++;
-      if (loadedFrames === 1) {
-        resizeFrameCanvas();
+// Find nearest loaded frame if target frame is still downloading
+function getBestAvailableFrame(targetIdx) {
+  if (frameImages.has(targetIdx)) {
+    const img = frameImages.get(targetIdx);
+    if (img.complete && img.naturalWidth > 0) return img;
+  }
+  let minDiff = Infinity;
+  let bestImg = null;
+  for (const [idx, img] of frameImages.entries()) {
+    if (img.complete && img.naturalWidth > 0) {
+      const diff = Math.abs(idx - targetIdx);
+      if (diff < minDiff) {
+        minDiff = diff;
+        bestImg = img;
       }
-      renderScrollFrame();
-    };
-    frameImages.push(img);
+    }
+  }
+  return bestImg;
+}
+
+function renderCanvasImmediate() {
+  if (!frameCtx || !frameCanvas) return;
+  const targetIdx = Math.min(TOTAL_FRAMES, Math.max(1, Math.round(currentFrameFloat)));
+  if (targetIdx === lastDrawnIndex) return;
+
+  const img = getBestAvailableFrame(targetIdx);
+  if (img) {
+    drawCoverOnCanvas(frameCtx, frameCanvas, img);
+    lastDrawnIndex = targetIdx;
   }
 }
 
-// Initial frame sequence loader — starting from frame 4
-loadFrameSequence(4, 267);
+// Smooth LERP animation loop (60fps / 120fps)
+function startCanvasAnimationLoop() {
+  if (isAnimatingCanvas) return;
+  isAnimatingCanvas = true;
+
+  function step() {
+    const diff = targetFrameFloat - currentFrameFloat;
+    if (Math.abs(diff) > 0.01) {
+      currentFrameFloat += diff * 0.22; // smooth lerp factor
+      renderCanvasImmediate();
+      requestAnimationFrame(step);
+    } else {
+      currentFrameFloat = targetFrameFloat;
+      renderCanvasImmediate();
+      isAnimatingCanvas = false;
+    }
+  }
+  requestAnimationFrame(step);
+}
+
+function updateScrollTarget() {
+  const maxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+  const scrollPercent = Math.min(1, Math.max(0, window.scrollY / maxScroll));
+  targetFrameFloat = 1 + scrollPercent * (TOTAL_FRAMES - 1);
+  startCanvasAnimationLoop();
+}
+
+window.addEventListener("scroll", updateScrollTarget, { passive: true });
+window.addEventListener("resize", resizeFrameCanvas, { passive: true });
+
+function loadSingleFrame(frameNum) {
+  return new Promise((resolve) => {
+    if (frameImages.has(frameNum)) {
+      resolve();
+      return;
+    }
+    const img = new Image();
+    img.decoding = "async";
+    const padNum = String(frameNum).padStart(3, '0');
+    img.src = `Frames/ezgif-frame-${padNum}.webp`;
+    img.onload = () => {
+      frameImages.set(frameNum, img);
+      if (frameNum === 1 || frameNum === 4) {
+        resizeFrameCanvas();
+      }
+      resolve();
+    };
+    img.onerror = resolve;
+  });
+}
+
+// Smart Chunked Async Loading Pipeline
+async function initFrameLoader() {
+  // 1. Immediately load key start frames and render to screen (<50ms)
+  await loadSingleFrame(1);
+  await loadSingleFrame(4);
+  currentFrameFloat = 1;
+  targetFrameFloat = 1;
+  resizeFrameCanvas();
+
+  // 2. Preload keyframes spaced across the scroll range for instant scrub feedback
+  const keyframes = [];
+  for (let i = 1; i <= TOTAL_FRAMES; i += 6) {
+    keyframes.push(i);
+  }
+  await Promise.all(keyframes.map(f => loadSingleFrame(f)));
+  renderCanvasImmediate();
+
+  // 3. Queue remaining frames in idle chunks of 10
+  const remaining = [];
+  for (let i = 1; i <= TOTAL_FRAMES; i++) {
+    if (!frameImages.has(i)) {
+      remaining.push(i);
+    }
+  }
+
+  let idx = 0;
+  function loadNextChunk() {
+    if (idx >= remaining.length) return;
+    const chunk = remaining.slice(idx, idx + 10);
+    idx += 10;
+    Promise.all(chunk.map(f => loadSingleFrame(f))).then(() => {
+      if (window.requestIdleCallback) {
+        requestIdleCallback(loadNextChunk, { timeout: 800 });
+      } else {
+        setTimeout(loadNextChunk, 50);
+      }
+    });
+  }
+
+  if (window.requestIdleCallback) {
+    requestIdleCallback(loadNextChunk, { timeout: 800 });
+  } else {
+    setTimeout(loadNextChunk, 100);
+  }
+}
+
+initFrameLoader();
 
 /* ═══════════════════════════════════════════════════════════
    DOM READY
