@@ -14,8 +14,11 @@ A special project created to celebrate and cherish our time together. This could
 2. [Add specific setup steps if applicable]
 3. Enjoy!
 
-## Contributors
-- [Your Name]
+## 👨‍💻 Developed By
+**Swaraj Shelke** *Automation Enthusiast & AI Workflow Architect building systems to multiply time, capital, and productivity.*
+- 🌐 [LinkedIn](https://www.linkedin.com/in/swaraj-shelke-0a3a752b8)
+- 📸 [Instagram](https://www.instagram.com/swarajshelke12)
+- 🎥 [YouTube](https://youtube.com/@swaraj_shelke?si=HnrwAuBAhQaiPaOZ)
 
 ## License
 MIT
